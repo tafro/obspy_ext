@@ -11,6 +11,7 @@ from numpy import array
 from obspy.core import read, Stream, UTCDateTime
 from obspy_ext.antelope.utils import add_antelope_path
 from obspy_ext.antelope.dbobjects import Dbrecord, DbrecordList 
+
 # Antelope path to python tools not added by default install
 add_antelope_path()               # adds path if not there
 from antelope.datascope import *  # all is necessary for db query variables
@@ -83,25 +84,26 @@ def readANTELOPE(database, station=None, channel=None, starttime=None, endtime=N
         db = Dbptr(database)
     elif isinstance(database,str):
         db = dbopen(database, 'r')
-        db = dblookup(db,table='wfdisc')
+#        db = dblookup(db,table='wfdisc')
+        db = db.lookup(table='wfdisc')
     else:
         raise TypeError("Must input a string or pointer to a valid database")
         
     if station is not None:
-        db = dbsubset(db,'sta=~/{0}/'.format(station))
+        db = db.subset('sta=~/{0}/'.format(station))
     if channel is not None:
-        db = dbsubset(db,'chan=~/{0}/'.format(channel))
+        db = db.subset('chan=~/{0}/'.format(channel))
     if starttime is not None and endtime is not None:
         ts = starttime.timestamp
         te = endtime.timestamp
-        db = dbsubset(db,'endtime > {0} && time < {1}'.format(ts,te) )
+        db = db.subset('endtime > {0} && time < {1}'.format(ts,te) )
     else:
         ts = starttime
         te = endtime
-    assert db.nrecs() is not 0, "No records for given time period"
+    assert db.query(dbRECORD_COUNT) is not 0, "No records for given time period"
     
     st = Stream()
-    for db.record in range(db.nrecs() ):
+    for db.record in range(db.query(dbRECORD_COUNT)):
         fname = db.filename() 
         dbr = Dbrecord(db)
         t0 = UTCDateTime(dbr.time)
@@ -110,6 +112,13 @@ def readANTELOPE(database, station=None, channel=None, starttime=None, endtime=N
             t0 = starttime
         if dbr.endtime > te:
             t1 = endtime
+#        print("Loading file", fname, type(fname))
+        # db.filename returns a tuple, but obspy.read requires a string
+        # [1, filename]
+        # Just use the filename at position 1. This likely causes problems in some situations
+        # possibly, when more than one mseed files are required for a given time range
+        fname=fname[1]
+#        print("Loading file", fname, type(fname))
         _st = read(fname, starttime=t0, endtime=t1)         # add format?
         _st = _st.select(station=dbr.sta, channel=dbr.chan) #not location aware
         _st[0].db = dbr
@@ -120,4 +129,9 @@ def readANTELOPE(database, station=None, channel=None, starttime=None, endtime=N
     #
     #if isinstance(database,str):
     #    db.close()
+	
+	# A time range covering two or more files lead to seperate traces for each file. Merge them
+	# together with st.merge() without gap interpolation. See obspy.merge() for details and different
+	# merge methods
+    st.merge()
     return st

@@ -1,5 +1,7 @@
 obspy antelope module
 Copyright by Mark Williams 2012.013
+Updated for Antelope 5.10 by Tanja Fromm 2020.016
+
 This software is distributed under the Lesser GNU Public License.
 See files COPYING and COPYING.lesser for details.
 
@@ -103,6 +105,7 @@ longer need to compile the code, unless you want to.
 #               -got AttribDbptr working... one pointer, one love.
 #      2012.027 -added to git and pushed to my github, now that
 #                everything works. Future changes documented there.
+#      2020.016 -TF: updated for Antelope 5.10
 #
 # FUTURE:
 # - possibly change the tuple attributes of DBrecord to lists?
